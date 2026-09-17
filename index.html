@@ -154,6 +154,17 @@
     flex: 0 0 auto; background: var(--bg); border: 1px solid var(--border); color: var(--text);
     font-size: 11px; padding: 5px 12px; border-radius: 9999px; white-space: nowrap;
   }
+  .chip.g1 { border-color: var(--good-text); color: var(--good-text); }
+  .chip.g2 { border-color: var(--neutral-dot); color: var(--neutral-dot); }
+  .chip.g3 { border-color: var(--warn-text); color: var(--warn-text); background: var(--warn-bg); }
+
+  .incident-alert {
+    padding: 12px 14px; border-radius: 0px; border: 1px solid var(--warn-text);
+    background: var(--warn-bg); margin-top: 10px;
+  }
+  .incident-alert-title { font-size: 13px; font-weight: 700; color: var(--warn-text); margin-bottom: 6px; }
+  .incident-item { font-size: 12px; padding: 4px 0; border-top: 1px solid rgba(239,68,68,0.25); }
+  .incident-item:first-child { border-top: none; }
 
   .heat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
   .heat-tile { border-radius: 0px; padding: 14px 10px; text-align: center; border: 1px solid var(--border); }
@@ -226,6 +237,7 @@
     </div>
 
     <div id="routeStatus" class="placeholder" style="margin-top:8px;">노선을 고르면 표시됩니다</div>
+    <div id="incidentAlertBox"></div>
   </div>
 
   <div class="card" id="stats">
@@ -304,9 +316,17 @@ function parseCity(addr) {
   return null;
 }
 
+// 잘 알려진 대도시는 휴게소 주소 기준 자동 매칭이 엉뚱한 지선을 고르는 경우가 있어서
+// (예: 부산이 경부선이 아니라 곁가지 노선으로 잡히는 문제), 널리 쓰는 주 노선으로 못박아 둔다.
+var MAJOR_CITY_ROUTE = {
+  "서울": "경부선", "부산": "경부선", "대구": "경부선", "대전": "경부선", "천안": "경부선", "울산": "경부선",
+  "광주": "호남선", "전주": "호남선", "목포": "서해안선", "군산": "서해안선",
+  "순천": "남해선", "여수": "남해선", "진주": "남해선", "창원": "남해선", "통영": "남해선",
+  "포항": "새만금포항선", "강릉": "영동선"
+};
+
 // 휴게소 주소만으로는 못 잡았지만 실제로는 고속도로가 닿는 지역 (근사 아님)
 var EXTRA_CITY_ROUTE = {
-  "전주": "호남선",
   "일산": "경부선",
   "고양": "경부선"
 };
@@ -326,6 +346,8 @@ var NON_EXPRESSWAY_FALLBACK = {
 function findRouteByCity(origin, dest) {
   var o = (origin || "").trim();
   var d = (dest || "").trim();
+  if (MAJOR_CITY_ROUTE[d]) return { route: MAJOR_CITY_ROUTE[d], approx: false };
+  if (MAJOR_CITY_ROUTE[o]) return { route: MAJOR_CITY_ROUTE[o], approx: false };
   if (CITY_ROUTE[d]) return { route: CITY_ROUTE[d], approx: false };
   if (CITY_ROUTE[o]) return { route: CITY_ROUTE[o], approx: false };
   if (EXTRA_CITY_ROUTE[d]) return { route: EXTRA_CITY_ROUTE[d], approx: false };
@@ -627,8 +649,8 @@ function renderRouteHeadline(route) {
   document.getElementById("compJamN").textContent = jam + "곳";
 
   var chips = document.getElementById("segChips");
-  chips.innerHTML = segs.slice(0, 25).map(function (s) {
-    return "<span class=\"chip\">" + s.conzoneName + "</span>";
+  chips.innerHTML = segs.slice(0, 40).map(function (s) {
+    return "<span class=\"chip g" + s.grade + "\" title=\"" + s.speed + "km/h\">" + s.conzoneName + "</span>";
   }).join("");
 
   logRouteHistory(route, good, slow, jam);
@@ -666,6 +688,7 @@ function renderRoute(route) {
   if (!route) {
     document.getElementById("routeStatus").innerHTML = "<span class=\"placeholder\">노선을 고르면 표시됩니다</span>";
     document.getElementById("routePrice").innerHTML = "<span class=\"placeholder\">노선을 고르면 표시됩니다</span>";
+    document.getElementById("incidentAlertBox").innerHTML = "";
     document.getElementById("routeHeadline").style.display = "none";
     renderJamList(null);
     renderMap();
@@ -691,6 +714,21 @@ function renderRoute(route) {
     statusEl.innerHTML =
       "<div class=\"status-banner status-warn\">정체·돌발상황이 있어 국도 확인을 권장합니다" +
       "<div class=\"status-detail\">" + typeText + "</div></div>";
+  }
+
+  var alertBox = document.getElementById("incidentAlertBox");
+  var accidents = meaningful.filter(function (item) {
+    return item.accType === "사고" || item.accType === "고장" || item.accType === "차량증가/정체";
+  });
+  if (accidents.length === 0) {
+    alertBox.innerHTML = "";
+  } else {
+    alertBox.innerHTML =
+      "<div class=\"incident-alert\"><div class=\"incident-alert-title\">사고·돌발상황 알림 (" + accidents.length + "건)</div>" +
+      accidents.slice(0, 10).map(function (item) {
+        return "<div class=\"incident-item\">[" + item.accType + "] " + (item.accPointNM || "").trim() +
+          " · " + item.accHour + " · " + item.smsText + "</div>";
+      }).join("") + "</div>";
   }
 
   // 최저가 휴게소
