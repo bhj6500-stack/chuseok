@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root {
+    color-scheme: dark;
     /* 블랙 배경 + 초록 포인트 + 정체는 빨강 */
     --bg: #08090a;
     --card: #131513;
@@ -58,6 +59,19 @@
   }
   .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
   .card .subnote { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+
+  .collapse-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 0px;
+    margin-bottom: 16px; overflow: hidden;
+  }
+  .collapse-card summary {
+    padding: 20px; font-size: 15px; font-weight: 700; cursor: pointer; list-style: none;
+    display: flex; justify-content: space-between; align-items: center; color: var(--text);
+  }
+  .collapse-card summary::-webkit-details-marker { display: none; }
+  .collapse-card summary::after { content: "펼치기"; font-size: 11px; color: var(--muted); font-weight: 400; }
+  .collapse-card[open] summary::after { content: "접기"; }
+  .collapse-card .collapse-body { padding: 0 20px 20px; }
   select {
     width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid var(--border);
     border-radius: 24px; font-family: inherit; background: var(--bg); margin-bottom: 4px;
@@ -174,45 +188,16 @@
 </div>
 
 <div class="quicknav">
+  <a href="#route">내 귀성길</a>
   <a href="#stats">전국 현황</a>
   <a href="#heatmap">정체 히트맵</a>
-  <a href="#eta">예상 소요시간</a>
-  <a href="#route">내 귀성길</a>
+  <a href="#etahistory">소요시간 기록</a>
   <a href="#jam">정체 구간</a>
   <a href="#map">지도·고속도로망</a>
   <a href="#cctv">CCTV</a>
 </div>
 
 <div class="wrap">
-  <div class="card" id="stats">
-    <h2>전국 현황</h2>
-    <p class="subnote">전국 고속도로 구간의 실시간 속도 기준입니다.</p>
-    <div class="stat-grid" id="nationalStats">
-      <div class="stat-box"><div class="stat-num good" id="statGood">-</div><div class="stat-label">소통원활 비율</div></div>
-      <div class="stat-box"><div class="stat-num warn" id="statJam">-</div><div class="stat-label">정체 구간</div></div>
-      <div class="stat-box"><div class="stat-num" id="statSlow">-</div><div class="stat-label">서행 구간</div></div>
-      <div class="stat-box"><div class="stat-num warn" id="statIncident">-</div><div class="stat-label">진행 중 사고·고장</div></div>
-    </div>
-  </div>
-
-  <div class="card" id="heatmap">
-    <h2>전국 정체 히트맵 (권역별)</h2>
-    <p class="subnote">노선 하나가 여러 권역을 지나는 경우가 많아서 정확한 지도 좌표 기준이 아니라, 노선명으로 대표 권역을 근사해서 묶은 것입니다. 색이 진할수록 정체 구간이 많습니다.</p>
-    <div class="heat-grid" id="heatGrid"><p class="placeholder">불러오는 중...</p></div>
-  </div>
-
-  <div class="card" id="eta">
-    <h2>서울 출발 예상 소요시간</h2>
-    <p class="subnote">지금 이 순간 기준 실시간 값입니다. 미래 특정 시간대(예: 내일 오전 9시)를 미리 예측해서 알려주는 자료는 공공데이터에 없어서, 이 화면을 열어둔 채로 갱신되는 값을 보고 언제 뚫리는지 직접 확인하는 방식입니다.</p>
-    <div id="etaTable" class="placeholder">불러오는 중...</div>
-  </div>
-
-  <div class="card" id="etahistory">
-    <h2>출발 시간별 소요시간 기록</h2>
-    <p class="subnote">미래 예측이 아니라, 이 화면이 열려 있는 동안 60초마다 실제로 받은 값을 시각별로 쌓아 보여줍니다. 이 기기에만 저장되고, 새로고침해도 남아 있습니다.</p>
-    <div id="etaHistoryTable" class="placeholder">데이터가 쌓이면 표시됩니다</div>
-  </div>
-
   <div class="card" id="route">
     <h2>내 귀성길</h2>
     <p class="subnote">출발지·도착지를 고르면 노선이 자동으로 정해집니다. 목록에 없으면 아래에서 노선을 직접 고르세요.</p>
@@ -243,6 +228,31 @@
     <div id="routeStatus" class="placeholder" style="margin-top:8px;">노선을 고르면 표시됩니다</div>
   </div>
 
+  <div class="card" id="stats">
+    <h2>전국 현황</h2>
+    <p class="subnote">전국 고속도로 구간의 실시간 속도 기준입니다.</p>
+    <div class="stat-grid" id="nationalStats">
+      <div class="stat-box"><div class="stat-num good" id="statGood">-</div><div class="stat-label">소통원활 비율</div></div>
+      <div class="stat-box"><div class="stat-num warn" id="statJam">-</div><div class="stat-label">정체 구간</div></div>
+      <div class="stat-box"><div class="stat-num" id="statSlow">-</div><div class="stat-label">서행 구간</div></div>
+      <div class="stat-box"><div class="stat-num warn" id="statIncident">-</div><div class="stat-label">진행 중 사고·고장</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="heatmap">
+    <h2>전국 정체 히트맵 (권역별)</h2>
+    <p class="subnote">노선 하나가 여러 권역을 지나는 경우가 많아서 정확한 지도 좌표 기준이 아니라, 노선명으로 대표 권역을 근사해서 묶은 것입니다. 색이 진할수록 정체 구간이 많습니다.</p>
+    <div class="heat-grid" id="heatGrid"><p class="placeholder">불러오는 중...</p></div>
+  </div>
+
+  <details class="collapse-card" id="etahistory">
+    <summary>출발 시간별 소요시간 기록</summary>
+    <div class="collapse-body">
+      <p class="subnote">미래 예측이 아니라, 이 화면이 열려 있는 동안 60초마다 서울 출발 예상 소요시간을 시각별로 쌓아 보여줍니다. 이 기기에만 저장되고, 새로고침해도 남아 있습니다.</p>
+      <div id="etaHistoryTable" class="placeholder">데이터가 쌓이면 표시됩니다</div>
+    </div>
+  </details>
+
   <div class="card" id="jam">
     <h2>전국 정체 구간 TOP 10</h2>
     <p class="subnote">시속이 가장 낮은 구간부터 보여줍니다. 노선을 고르면 그 노선만 다시 보여줍니다.</p>
@@ -251,7 +261,7 @@
 
   <div class="card" id="map">
     <h2>실시간 지도 · 고속도로망</h2>
-    <p class="subnote">휴게소의 실제 좌표에 유가를 표시하고, 같은 노선 휴게소를 순서대로 선으로 이었습니다. "내 귀성길"에서 노선을 고르면 그 노선만 굵게 표시되고 지금 상태가 아래에 나옵니다.</p>
+    <p class="subnote">휴게소의 실제 좌표에 유가를 표시하고, 같은 노선 휴게소를 순서대로 선으로 이었습니다. 노선을 고르기 전엔 전국이 다 나오고, "내 귀성길"에서 노선을 고르면 그 노선만 남고 지금 상태가 아래에 나옵니다.</p>
     <div id="mapRouteStatus" class="placeholder" style="margin-bottom:10px;">노선을 고르면 그 노선 상태가 여기 표시됩니다</div>
     <div id="mapContainer" style="height:360px;"></div>
     <div class="net-legend" style="margin-top:8px;">
@@ -432,13 +442,7 @@ function renderEtaTable() {
     .then(function (r) { return r.json(); })
     .then(function (data) {
       var row = (data.list || [])[0];
-      var el = document.getElementById("etaTable");
-      if (!row) { el.innerHTML = "<span class=\"error\">불러오기 실패</span>"; return; }
-      var rows = ETA_CITIES.map(function (c) {
-        var key = "csu" + c.code;
-        return "<tr><td>서울 → " + c.name + "</td><td class=\"price\">" + (row[key] || "-") + "</td></tr>";
-      }).join("");
-      el.innerHTML = "<table><thead><tr><th>구간</th><th>예상 소요시간</th></tr></thead><tbody>" + rows + "</tbody></table>";
+      if (!row) return;
 
       var entry = { time: nowLabel() };
       ETA_CITIES.forEach(function (c) { entry[c.code] = row["csu" + c.code] || "-"; });
@@ -447,9 +451,7 @@ function renderEtaTable() {
       try { localStorage.setItem("etaHistory", JSON.stringify(ETA_HISTORY)); } catch (e) {}
       renderEtaHistoryTable();
     })
-    .catch(function () {
-      document.getElementById("etaTable").innerHTML = "<span class=\"error\">불러오기 실패</span>";
-    });
+    .catch(function () {});
 }
 
 function renderJamList(routeFilter) {
@@ -478,10 +480,9 @@ var mapLayer = null;
 function ensureMap() {
   if (map || typeof L === "undefined") return;
   map = L.map("mapContainer").setView([36.3, 127.8], 7);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-    maxZoom: 18,
-    subdomains: "abcd"
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+    attribution: "&copy; Esri &copy; OpenStreetMap contributors",
+    maxZoom: 16
   }).addTo(map);
   mapLayer = L.layerGroup().addTo(map);
 }
@@ -529,24 +530,24 @@ function renderMap() {
   var selectedBounds = [];
 
   Object.keys(byRoute).forEach(function (route) {
+    if (currentRoute && route !== currentRoute) return; // 노선을 고르면 그 노선만 표출
     var pts = byRoute[route];
     var isSelected = currentRoute && route === currentRoute;
-    var dimmed = currentRoute && !isSelected;
 
     if (pts.length > 1) {
       var latlngs = pts.map(function (p) { return [p.lat, p.lng]; });
       L.polyline(latlngs, {
-        color: dimmed ? "#3a3f3a" : routeLineColor(route),
+        color: routeLineColor(route),
         weight: isSelected ? 5 : 2,
-        opacity: dimmed ? 0.5 : 0.85
+        opacity: 0.85
       }).addTo(mapLayer);
       if (isSelected) selectedBounds = selectedBounds.concat(latlngs);
     }
     pts.forEach(function (p) {
-      var color = dimmed ? "#3a3f3a" : (p.gasoline == null ? "#8b9490" : priceColor(p.gasoline, minP, maxP));
+      var color = p.gasoline == null ? "#8b9490" : priceColor(p.gasoline, minP, maxP);
       L.circleMarker([p.lat, p.lng], {
         radius: isSelected ? 7 : 5, color: "#0a0a0a", weight: 1,
-        fillColor: color, fillOpacity: dimmed ? 0.5 : 0.9
+        fillColor: color, fillOpacity: 0.9
       })
         .bindPopup(p.name + "<br>" + p.route + "<br>" + (p.gasolineText || "유가 정보 없음"))
         .addTo(mapLayer);
