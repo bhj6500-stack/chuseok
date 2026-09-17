@@ -754,13 +754,17 @@ function loadAndRender() {
     });
     populateCitySelects(cityOptions);
 
-    var locByCode = {};
-    locationList.forEach(function (l) { locByCode[l.serviceAreaCode] = l; });
-    restStops = priceRows.map(function (p) {
-      var loc = locByCode[p.serviceAreaCode];
-      if (!loc) return null;
-      return { name: p.name, route: p.route, lat: loc.lat, lng: loc.lng, gasoline: p.gasoline, gasolineText: p.gasolineText };
-    }).filter(function (x) { return x; });
+    // 지도 위 선은 노선을 따라가는 순서로 이어야 해서, 유가 낮은 순으로 정렬된 priceRows가 아니라
+    // 원래 API가 준 순서(노선 순서와 같다)인 locationList를 기준으로 만들고 유가만 코드로 붙인다.
+    var priceByCode = {};
+    priceRows.forEach(function (p) { priceByCode[p.serviceAreaCode] = p; });
+    restStops = locationList.map(function (l) {
+      var p = priceByCode[l.serviceAreaCode];
+      return {
+        name: l.name, route: l.route, lat: l.lat, lng: l.lng,
+        gasoline: p ? p.gasoline : null, gasolineText: p ? p.gasolineText : null
+      };
+    });
 
     renderNationalStats();
     renderHeatmap();
