@@ -261,7 +261,7 @@
 
   <div class="card" id="map">
     <h2>실시간 지도 · 고속도로망</h2>
-    <p class="subnote">휴게소의 실제 좌표에 유가를 점으로 표시합니다. "내 귀성길"에서 노선을 고르면 그 노선 휴게소만 남고, 휴게소를 직선으로 잇는 대신 실제 도로 모양을 따라가는 경로가 그려집니다. 정체면 빨강, 원활하면 초록입니다.</p>
+    <p class="subnote">휴게소를 전부 찍지 않고 노선의 시점·종점만 점으로 표시합니다. "내 귀성길"에서 노선을 고르면 그 노선의 시점·종점만 남고, 둘 사이는 실제 도로 모양을 따라가는 경로로 이어집니다. 정체면 빨강, 원활하면 초록입니다.</p>
     <div id="mapRouteStatus" class="placeholder" style="margin-bottom:10px;">노선을 고르면 그 노선 상태가 여기 표시됩니다</div>
     <div id="mapContainer" style="height:360px;"></div>
     <div class="net-legend" style="margin-top:8px;">
@@ -557,18 +557,22 @@ function renderMap() {
     if (currentRoute && route !== currentRoute) return; // 노선을 고르면 그 노선만 표출
     var pts = byRoute[route];
     var isSelected = currentRoute && route === currentRoute;
+    if (pts.length === 0) return;
 
     // 휴게소끼리 직선으로 잇지 않고, 실제 도로 모양(OSRM)을 따라가는 선을 그린다
     if (isSelected && pts.length > 1) {
       drawRealRoutePath(route, pts[0], pts[pts.length - 1]);
     }
-    pts.forEach(function (p) {
+
+    // 휴게소를 전부 찍지 않고 경로의 시점·종점만 표시한다
+    var endpoints = pts.length > 1 ? [pts[0], pts[pts.length - 1]] : [pts[0]];
+    endpoints.forEach(function (p, idx) {
       var color = p.gasoline == null ? "#8b9490" : priceColor(p.gasoline, minP, maxP);
       L.circleMarker([p.lat, p.lng], {
-        radius: isSelected ? 7 : 5, color: "#0a0a0a", weight: 1,
-        fillColor: color, fillOpacity: 0.9
+        radius: isSelected ? 8 : 6, color: "#0a0a0a", weight: 1,
+        fillColor: color, fillOpacity: 0.95
       })
-        .bindPopup(p.name + "<br>" + p.route + "<br>" + (p.gasolineText || "유가 정보 없음"))
+        .bindPopup((idx === 0 ? "시점: " : "종점: ") + p.name + "<br>" + p.route + "<br>" + (p.gasolineText || "유가 정보 없음"))
         .addTo(mapLayer);
       if (isSelected) selectedBounds.push([p.lat, p.lng]);
     });
