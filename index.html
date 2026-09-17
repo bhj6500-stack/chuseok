@@ -554,6 +554,11 @@ function renderMap() {
     });
   });
 
+  var hasMapData = currentRoute && byRoute[currentRoute] && byRoute[currentRoute].length > 0;
+  var mapNote = (currentRoute && !hasMapData)
+    ? "<div class=\"status-detail\">이 노선은 휴게소 좌표와 연결된 유가 데이터가 없어서 지도에는 표시할 게 없습니다. 아래 상태·정체 구간 정보는 그대로 확인할 수 있습니다.</div>"
+    : "";
+
   var statusEl = document.getElementById("mapRouteStatus");
   if (!currentRoute) {
     statusEl.className = "placeholder";
@@ -562,12 +567,13 @@ function renderMap() {
     var status = routeStatusLabel(currentRoute);
     if (!status) {
       statusEl.className = "placeholder";
-      statusEl.innerHTML = currentRoute + ": 실시간 속도 데이터가 없습니다";
+      statusEl.innerHTML = currentRoute + ": 실시간 속도 데이터가 없습니다" + mapNote;
     } else {
       statusEl.className = "status-banner " + status.cls;
       statusEl.innerHTML = currentRoute + " 지금 상태: " + status.text +
-        "<div class=\"status-detail\">" + status.detail + "</div>";
+        "<div class=\"status-detail\">" + status.detail + "</div>" + mapNote;
       if (selectedBounds.length > 1) map.fitBounds(selectedBounds, { padding: [24, 24] });
+      else if (!hasMapData) map.setView([36.3, 127.8], 7);
     }
   }
 }
