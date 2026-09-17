@@ -509,6 +509,22 @@ function ensureMap() {
   mapLayer = L.layerGroup().addTo(map);
 }
 
+// API가 준 순서만으로는 노선의 실제 양 끝이 아닐 수 있어서(방향별로 섞여 있음),
+// 휴게소 중 서로 가장 멀리 떨어진 두 점을 진짜 시점·종점으로 잡는다.
+function findFarthestPair(pts) {
+  var best = [pts[0], pts[0]];
+  var bestDist = -1;
+  for (var i = 0; i < pts.length; i++) {
+    for (var j = i + 1; j < pts.length; j++) {
+      var dLat = pts[i].lat - pts[j].lat;
+      var dLng = pts[i].lng - pts[j].lng;
+      var d = dLat * dLat + dLng * dLng;
+      if (d > bestDist) { bestDist = d; best = [pts[i], pts[j]]; }
+    }
+  }
+  return best;
+}
+
 function priceColor(price, min, max) {
   if (max === min) return "#8b9490";
   var t = (price - min) / (max - min);
@@ -581,13 +597,19 @@ function renderMap() {
     var isSelected = currentRoute && route === currentRoute;
     if (pts.length === 0) return;
 
-    // 휴게소끼리 직선으로 잇지 않고, 실제 도로 모양(OSRM)을 따라가는 선을 그린다
+    var endpoints = pts.length > 1 ? findFarthestPair(pts) : [pts[0]];
+
+    // 휴게소끼리 직선으로 잇지 않고, 실제 도로 모양(OSRM)을 따라가는 선을 그린다.
+    // 출발지·도착지를 실제 지명 좌표로 지오코딩했으면 그 좌표를, 아니면 휴게소 추정 좌표를 쓴다.
     if (isSelected && pts.length > 1) {
-      drawRealRoutePath(route, pts[0], pts[pts.length - 1]);
+      if (currentGeoEndpoints) {
+        drawRealRoutePath(route, currentGeoEndpoints.start, currentGeoEndpoints.end);
+      } else {
+        drawRealRoutePath(route, endpoints[0], endpoints[1]);
+      }
     }
 
     // 휴게소를 전부 찍지 않고 경로의 시점·종점만 표시한다
-    var endpoints = pts.length > 1 ? [pts[0], pts[pts.length - 1]] : [pts[0]];
     endpoints.forEach(function (p, idx) {
       var color = p.gasoline == null ? "#8b9490" : priceColor(p.gasoline, minP, maxP);
       L.circleMarker([p.lat, p.lng], {
@@ -750,6 +772,13 @@ function renderRoute(route) {
 
 var currentRoute = "";
 var routeList = [];
+var currentGeoEndpoints = null; // {start:{lat,lng}, end:{lat,lng}} - 지오코딩으로 찾은 실제 출발지·도착지
+
+function geocodeCity(name) {
+  return fetch("/api/geocode?q=" + encodeURIComponent(name))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .catch(function () { return null; });
+}
 
 function pad2(n) { return n < 10 ? "0" + n : "" + n; }
 function nowLabel() {
@@ -869,6 +898,7 @@ function populateCitySelects(cityOptions) {
 
 document.getElementById("routeSelect").addEventListener("change", function (e) {
   currentRoute = e.target.value;
+  currentGeoEndpoints = null; // 직접 노선만 고른 경우엔 정확한 출발·도착 지명을 모른다
   renderRoute(currentRoute);
 });
 
@@ -889,8 +919,18 @@ document.getElementById("findRouteBtn").addEventListener("click", function () {
       ? origin + " → " + dest + ": " + matched.route + "으로 가다가 마지막은 국도 구간입니다 (근사 안내)"
       : origin + " → " + dest + " 자동으로 고른 노선: " + matched.route;
     currentRoute = matched.route;
+    currentGeoEndpoints = null;
+    delete routePathCache[matched.route];
     document.getElementById("routeSelect").value = matched.route;
     renderRoute(matched.route);
+
+    Promise.all([geocodeCity(origin), geocodeCity(dest)]).then(function (results) {
+      if (results[0] && results[1] && currentRoute === matched.route) {
+        currentGeoEndpoints = { start: results[0], end: results[1] };
+        delete routePathCache[matched.route];
+        renderMap();
+      }
+    });
   } else {
     resultEl.className = "od-result notfound";
     resultEl.textContent = "이 조합은 표에 없습니다. 아래 목록에서 직접 골라 주세요.";
