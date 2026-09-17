@@ -261,7 +261,7 @@
 
   <div class="card" id="map">
     <h2>실시간 지도 · 고속도로망</h2>
-    <p class="subnote">휴게소의 실제 좌표에 유가를 표시하고, 같은 노선 휴게소를 순서대로 선으로 이었습니다. 노선을 고르기 전엔 전국이 다 나오고, "내 귀성길"에서 노선을 고르면 그 노선만 남고 지금 상태가 아래에 나옵니다.</p>
+    <p class="subnote">휴게소의 실제 좌표에 유가를 점으로 표시합니다. "내 귀성길"에서 노선을 고르면 그 노선 휴게소만 남고, 휴게소를 직선으로 잇는 대신 실제 도로 모양을 따라가는 경로가 그려집니다. 정체면 빨강, 원활하면 초록입니다.</p>
     <div id="mapRouteStatus" class="placeholder" style="margin-bottom:10px;">노선을 고르면 그 노선 상태가 여기 표시됩니다</div>
     <div id="mapContainer" style="height:360px;"></div>
     <div class="net-legend" style="margin-top:8px;">
@@ -512,6 +512,30 @@ function routeStatusLabel(route) {
   return { text: "원활", cls: "status-good", detail: "전체 " + segs.length + "곳 모두 원활" };
 }
 
+// 휴게소를 직선으로 잇는 대신, OSRM(무료 공개 경로 API)으로 실제 도로 모양을 받아서 그린다.
+// 노선당 한 번만 받아 캐시해두고, 색은 매번 지금 혼잡도로 새로 칠한다.
+var routePathCache = {};
+
+function drawRealRoutePath(route, startPt, endPt) {
+  var color = routeLineColor(route);
+  if (routePathCache[route]) {
+    L.polyline(routePathCache[route], { color: color, weight: 5, opacity: 0.9 }).addTo(mapLayer);
+    return;
+  }
+  var url = "https://router.project-osrm.org/route/v1/driving/" +
+    startPt.lng + "," + startPt.lat + ";" + endPt.lng + "," + endPt.lat +
+    "?overview=full&geometries=geojson";
+  fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+    var r0 = data.routes && data.routes[0];
+    if (!r0) return;
+    var latlngs = r0.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
+    routePathCache[route] = latlngs;
+    if (currentRoute === route && mapLayer) {
+      L.polyline(latlngs, { color: routeLineColor(route), weight: 5, opacity: 0.9 }).addTo(mapLayer);
+    }
+  }).catch(function () {});
+}
+
 function renderMap() {
   ensureMap();
   if (!map) return;
@@ -534,14 +558,9 @@ function renderMap() {
     var pts = byRoute[route];
     var isSelected = currentRoute && route === currentRoute;
 
-    if (pts.length > 1) {
-      var latlngs = pts.map(function (p) { return [p.lat, p.lng]; });
-      L.polyline(latlngs, {
-        color: routeLineColor(route),
-        weight: isSelected ? 5 : 2,
-        opacity: 0.85
-      }).addTo(mapLayer);
-      if (isSelected) selectedBounds = selectedBounds.concat(latlngs);
+    // 휴게소끼리 직선으로 잇지 않고, 실제 도로 모양(OSRM)을 따라가는 선을 그린다
+    if (isSelected && pts.length > 1) {
+      drawRealRoutePath(route, pts[0], pts[pts.length - 1]);
     }
     pts.forEach(function (p) {
       var color = p.gasoline == null ? "#8b9490" : priceColor(p.gasoline, minP, maxP);
@@ -551,6 +570,7 @@ function renderMap() {
       })
         .bindPopup(p.name + "<br>" + p.route + "<br>" + (p.gasolineText || "유가 정보 없음"))
         .addTo(mapLayer);
+      if (isSelected) selectedBounds.push([p.lat, p.lng]);
     });
   });
 
