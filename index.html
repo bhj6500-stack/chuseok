@@ -8,17 +8,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root {
-    /* Nike DESIGN.md 토큰: ink/canvas/soft-cloud + sale(red)/success(green) */
-    --bg: #f5f5f5;
-    --card: #ffffff;
-    --text: #111111;
-    --muted: #707072;
-    --accent: #111111;
-    --accent-soft: #ffffff;
-    --border: #cacacb;
-    --good-bg: #eaf7f0; --good-text: #007d48;
-    --warn-bg: #fdeaea; --warn-text: #d30005;
-    --neutral-dot: #4b4b4d;
+    /* 블랙 배경 + 초록 포인트 + 정체는 빨강 */
+    --bg: #08090a;
+    --card: #131513;
+    --text: #eef2ee;
+    --muted: #8b9490;
+    --accent: #22c55e;
+    --accent-soft: rgba(34,197,94,0.14);
+    --border: #24272a;
+    --good-bg: rgba(34,197,94,0.14); --good-text: #34d399;
+    --warn-bg: rgba(239,68,68,0.14); --warn-text: #ef4444;
+    --neutral-dot: #8b9490;
   }
   * { box-sizing: border-box; }
   body {
@@ -32,12 +32,12 @@
   .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
 
   .hero {
-    background: var(--accent); color: #fff; padding: 20px 16px 16px;
-    margin-bottom: 16px;
+    background: var(--card); color: var(--text); padding: 20px 16px 16px;
+    margin-bottom: 16px; border-bottom: 1px solid var(--border);
   }
   .hero-inner { max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 18px; font-weight: 700; margin: 0 0 2px; text-transform: uppercase; letter-spacing: 0.3px; }
-  .hero-sub { font-size: 12px; color: #cacacb; margin: 0 0 12px; }
+  h1 { font-size: 18px; font-weight: 700; margin: 0 0 2px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--accent); }
+  .hero-sub { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
   .updated { color: #eaeaea; font-size: 12px; display: flex; align-items: center; gap: 6px; }
   .live-dot { width: 7px; height: 7px; border-radius: 9999px; background: var(--good-text); flex: 0 0 auto; }
 
@@ -69,8 +69,8 @@
     border-radius: 24px; font-family: inherit; background: var(--bg);
   }
   .od-btn {
-    padding: 12px 24px; background: var(--accent); color: #fff; border: none;
-    border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer;
+    padding: 12px 24px; background: var(--accent); color: #04150b; border: none;
+    border-radius: 9999px; font-size: 14px; font-weight: 700; cursor: pointer;
   }
   .od-result { font-size: 13px; margin: 8px 0 4px; }
   .od-result.found { color: var(--good-text); font-weight: 500; }
@@ -97,8 +97,8 @@
   }
 
   .cctv-btn {
-    display: inline-block; margin-top: 6px; padding: 12px 24px; background: var(--accent); color: #fff;
-    border-radius: 9999px; text-decoration: none; font-size: 14px; font-weight: 500;
+    display: inline-block; margin-top: 6px; padding: 12px 24px; background: var(--accent); color: #04150b;
+    border-radius: 9999px; text-decoration: none; font-size: 14px; font-weight: 700;
   }
   .cctv-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
   .error { color: var(--warn-text); font-size: 13px; }
@@ -236,6 +236,8 @@
         <span class="lg3">정체 <b id="compJamN"></b></span>
       </div>
       <div class="chip-row" id="segChips"></div>
+      <p class="subnote" style="margin-top:10px; margin-bottom:6px;">이 노선 혼잡도 기록 (미래 예측 아님, 화면을 열어둔 동안 60초마다 실제 값을 쌓은 것)</p>
+      <div id="routeHistoryBox"></div>
     </div>
 
     <div id="routeStatus" class="placeholder" style="margin-top:8px;">노선을 고르면 표시됩니다</div>
@@ -292,6 +294,13 @@ function parseCity(addr) {
   return null;
 }
 
+// 휴게소 주소만으로는 못 잡았지만 실제로는 고속도로가 닿는 지역 (근사 아님)
+var EXTRA_CITY_ROUTE = {
+  "전주": "호남선",
+  "일산": "경부선",
+  "고양": "경부선"
+};
+
 // 고속도로 휴게소가 없어서 실시간 데이터만으로는 안 잡히는 지역 몇 곳을 손으로 추가한 목록이다.
 // 정확한 나들목 단위 안내가 아니라 "이 노선 근처까지 고속도로, 그 다음은 국도"라는 대략적인 안내다.
 var NON_EXPRESSWAY_FALLBACK = {
@@ -309,6 +318,8 @@ function findRouteByCity(origin, dest) {
   var d = (dest || "").trim();
   if (CITY_ROUTE[d]) return { route: CITY_ROUTE[d], approx: false };
   if (CITY_ROUTE[o]) return { route: CITY_ROUTE[o], approx: false };
+  if (EXTRA_CITY_ROUTE[d]) return { route: EXTRA_CITY_ROUTE[d], approx: false };
+  if (EXTRA_CITY_ROUTE[o]) return { route: EXTRA_CITY_ROUTE[o], approx: false };
   if (NON_EXPRESSWAY_FALLBACK[d]) return { route: NON_EXPRESSWAY_FALLBACK[d], approx: true };
   if (NON_EXPRESSWAY_FALLBACK[o]) return { route: NON_EXPRESSWAY_FALLBACK[o], approx: true };
   return null;
@@ -369,9 +380,9 @@ function renderHeatmap() {
   el.innerHTML = REGION_ORDER.filter(function (r) { return counts[r].total > 0; }).map(function (region) {
     var c = counts[region];
     var bg, fg;
-    if (c.jam === 0) { bg = "#eaf7f0"; fg = "#007d48"; }
-    else if (c.jam < 5) { bg = "#fdf1e0"; fg = "#8a5a00"; }
-    else { bg = "#fdeaea"; fg = "#d30005"; }
+    if (c.jam === 0) { bg = "rgba(34,197,94,0.14)"; fg = "#34d399"; }
+    else if (c.jam < 5) { bg = "rgba(245,158,11,0.14)"; fg = "#f59e0b"; }
+    else { bg = "rgba(239,68,68,0.14)"; fg = "#ef4444"; }
     return "<div class=\"heat-tile\" style=\"background:" + bg + ";\">" +
       "<div class=\"heat-region\" style=\"color:" + fg + ";\">" + region + "</div>" +
       "<div class=\"heat-count\" style=\"color:" + fg + ";\">" + c.jam + "</div>" +
@@ -467,26 +478,27 @@ var mapLayer = null;
 function ensureMap() {
   if (map || typeof L === "undefined") return;
   map = L.map("mapContainer").setView([36.3, 127.8], 7);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap contributors",
-    maxZoom: 18
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+    maxZoom: 18,
+    subdomains: "abcd"
   }).addTo(map);
   mapLayer = L.layerGroup().addTo(map);
 }
 
 function priceColor(price, min, max) {
-  if (max === min) return "#707072";
+  if (max === min) return "#8b9490";
   var t = (price - min) / (max - min);
-  if (t < 0.33) return "#007d48";
-  if (t < 0.66) return "#4b4b4d";
-  return "#d30005";
+  if (t < 0.33) return "#34d399";
+  if (t < 0.66) return "#8b9490";
+  return "#ef4444";
 }
 
 function routeLineColor(route) {
   var segs = speedList.filter(function (s) { return s.routeName === route; });
-  if (segs.some(function (s) { return s.grade === "3"; })) return "#d30005";
-  if (segs.some(function (s) { return s.grade === "2"; })) return "#4b4b4d";
-  return "#007d48";
+  if (segs.some(function (s) { return s.grade === "3"; })) return "#ef4444";
+  if (segs.some(function (s) { return s.grade === "2"; })) return "#8b9490";
+  return "#34d399";
 }
 
 function routeStatusLabel(route) {
@@ -524,16 +536,16 @@ function renderMap() {
     if (pts.length > 1) {
       var latlngs = pts.map(function (p) { return [p.lat, p.lng]; });
       L.polyline(latlngs, {
-        color: dimmed ? "#cacacb" : routeLineColor(route),
+        color: dimmed ? "#3a3f3a" : routeLineColor(route),
         weight: isSelected ? 5 : 2,
-        opacity: dimmed ? 0.4 : 0.85
+        opacity: dimmed ? 0.5 : 0.85
       }).addTo(mapLayer);
       if (isSelected) selectedBounds = selectedBounds.concat(latlngs);
     }
     pts.forEach(function (p) {
-      var color = dimmed ? "#cacacb" : (p.gasoline == null ? "#9e9ea0" : priceColor(p.gasoline, minP, maxP));
+      var color = dimmed ? "#3a3f3a" : (p.gasoline == null ? "#8b9490" : priceColor(p.gasoline, minP, maxP));
       L.circleMarker([p.lat, p.lng], {
-        radius: isSelected ? 7 : 5, color: "#fff", weight: 1,
+        radius: isSelected ? 7 : 5, color: "#0a0a0a", weight: 1,
         fillColor: color, fillOpacity: dimmed ? 0.5 : 0.9
       })
         .bindPopup(p.name + "<br>" + p.route + "<br>" + (p.gasolineText || "유가 정보 없음"))
@@ -587,6 +599,36 @@ function renderRouteHeadline(route) {
   chips.innerHTML = segs.slice(0, 25).map(function (s) {
     return "<span class=\"chip\">" + s.conzoneName + "</span>";
   }).join("");
+
+  logRouteHistory(route, good, slow, jam);
+  renderRouteHistory(route);
+}
+
+var ROUTE_HISTORY = {};
+try { ROUTE_HISTORY = JSON.parse(localStorage.getItem("routeHistory") || "{}"); } catch (e) { ROUTE_HISTORY = {}; }
+
+function logRouteHistory(route, good, slow, jam) {
+  if (!ROUTE_HISTORY[route]) ROUTE_HISTORY[route] = [];
+  var arr = ROUTE_HISTORY[route];
+  var last = arr[arr.length - 1];
+  if (last && last.good === good && last.slow === slow && last.jam === jam) return;
+  arr.push({ time: nowLabel(), good: good, slow: slow, jam: jam });
+  if (arr.length > 30) ROUTE_HISTORY[route] = arr.slice(-30);
+  try { localStorage.setItem("routeHistory", JSON.stringify(ROUTE_HISTORY)); } catch (e) {}
+}
+
+function renderRouteHistory(route) {
+  var arr = ROUTE_HISTORY[route] || [];
+  var el = document.getElementById("routeHistoryBox");
+  if (arr.length === 0) {
+    el.innerHTML = "<span class=\"placeholder\">기록이 쌓이면 표시됩니다</span>";
+    return;
+  }
+  var rows = arr.slice().reverse().map(function (e) {
+    return "<tr><td>" + e.time + "</td><td>" + e.good + "곳</td><td>" + e.slow + "곳</td>" +
+      "<td style=\"color:" + (e.jam > 0 ? "var(--warn-text)" : "var(--text)") + ";font-weight:700;\">" + e.jam + "곳</td></tr>";
+  }).join("");
+  el.innerHTML = "<div style=\"overflow-x:auto;\"><table><thead><tr><th>시각</th><th>원활</th><th>서행</th><th>정체</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
 }
 
 function renderRoute(route) {
@@ -697,8 +739,11 @@ function loadAndRender() {
       if (city && !CITY_ROUTE[city]) CITY_ROUTE[city] = row.route;
     });
     var cityOptions = Object.keys(CITY_ROUTE).sort().map(function (c) { return { name: c, approx: false }; });
+    Object.keys(EXTRA_CITY_ROUTE).forEach(function (c) {
+      if (!CITY_ROUTE[c]) cityOptions.push({ name: c, approx: false });
+    });
     Object.keys(NON_EXPRESSWAY_FALLBACK).forEach(function (c) {
-      if (!CITY_ROUTE[c]) cityOptions.push({ name: c, approx: true });
+      if (!CITY_ROUTE[c] && !EXTRA_CITY_ROUTE[c]) cityOptions.push({ name: c, approx: true });
     });
     populateCitySelects(cityOptions);
 
