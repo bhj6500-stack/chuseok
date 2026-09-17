@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>추석 귀성길 안내판</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    /* Nike DESIGN.md 토큰: ink/canvas/soft-cloud + sale(red)/success(green) */
+    --bg: #f5f5f5;
+    --card: #ffffff;
+    --text: #111111;
+    --muted: #707072;
+    --accent: #111111;
+    --accent-soft: #ffffff;
+    --border: #cacacb;
+    --good-bg: #eaf7f0; --good-text: #007d48;
+    --warn-bg: #fdeaea; --warn-text: #d30005;
+    --neutral-dot: #4b4b4d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Helvetica Neue", Helvetica, Arial, "Malgun Gothic", sans-serif;
+  }
+  body { padding: 0 0 60px; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+
+  .hero {
+    background: var(--accent); color: #fff; padding: 20px 16px 16px;
+    margin-bottom: 16px;
+  }
+  .hero-inner { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 18px; font-weight: 700; margin: 0 0 2px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .hero-sub { font-size: 12px; color: #cacacb; margin: 0 0 12px; }
+  .updated { color: #eaeaea; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 9999px; background: var(--good-text); flex: 0 0 auto; }
+
+  .quicknav {
+    display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px 4px; margin: 0 0 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .quicknav a {
+    flex: 0 0 auto; background: var(--card); border: 1px solid var(--border); color: var(--text);
+    text-decoration: none; font-size: 12px; font-weight: 500; padding: 8px 16px; border-radius: 9999px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+  .card .subnote { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+  select {
+    width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid var(--border);
+    border-radius: 24px; font-family: inherit; background: var(--bg); margin-bottom: 4px;
+  }
+  .placeholder { color: var(--muted); font-size: 13px; }
+  .od-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .od-row input {
+    flex: 1; padding: 10px 12px; font-size: 15px; border: 1px solid var(--border);
+    border-radius: 24px; font-family: inherit; background: var(--bg);
+  }
+  .od-btn {
+    padding: 12px 24px; background: var(--accent); color: #fff; border: none;
+    border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer;
+  }
+  .od-result { font-size: 13px; margin: 8px 0 4px; }
+  .od-result.found { color: var(--good-text); font-weight: 500; }
+  .od-result.notfound { color: var(--warn-text); font-weight: 500; }
+
+  .status-banner { padding: 14px 16px; border-radius: 0px; border: 1px solid var(--border); font-size: 14px; font-weight: 700; margin-top: 12px; }
+  .status-good { background: var(--good-bg); color: var(--good-text); border-color: var(--good-text); }
+  .status-warn { background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-text); }
+  .status-detail { font-weight: 400; font-size: 13px; margin-top: 4px; color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td.price { font-weight: 700; }
+
+  .food-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .food-item:last-child { border-bottom: none; }
+  .food-name { font-weight: 700; font-size: 13px; }
+  .food-menu { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .badge-dummy {
+    display: inline-block; font-size: 10px; font-weight: 500; color: var(--text);
+    background: var(--card); border: 1px solid var(--border); border-radius: 9999px;
+    padding: 2px 10px; margin-left: 6px; text-transform: none;
+  }
+
+  .cctv-btn {
+    display: inline-block; margin-top: 6px; padding: 12px 24px; background: var(--accent); color: #fff;
+    border-radius: 9999px; text-decoration: none; font-size: 14px; font-weight: 500;
+  }
+  .cctv-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .error { color: var(--warn-text); font-size: 13px; }
+
+  .stat-grid {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .stat-box {
+    flex: 0 0 auto; min-width: 96px; text-align: center; padding: 12px 14px;
+    background: var(--bg); border: 1px solid var(--border);
+  }
+  .stat-num { font-size: 24px; font-weight: 700; color: var(--text); }
+  .stat-num.good { color: var(--good-text); }
+  .stat-num.warn { color: var(--warn-text); }
+  .stat-label { font-size: 10px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+
+  .od-row { align-items: center; }
+  .od-row select { flex: 1; margin-bottom: 0; }
+  .od-swap {
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 9999px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 16px; cursor: pointer;
+  }
+
+  .route-headline { margin-top: 4px; }
+  .route-headline .route-name { font-size: 22px; font-weight: 700; text-transform: uppercase; }
+  .comp-bar { display: flex; height: 10px; border: 1px solid var(--border); overflow: hidden; margin: 10px 0 6px; }
+  .comp-seg.g1 { background: var(--good-text); }
+  .comp-seg.g2 { background: var(--neutral-dot); }
+  .comp-seg.g3 { background: var(--warn-text); }
+  .comp-legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .comp-legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 9999px; margin-right: 4px; vertical-align: middle; }
+  .comp-legend .lg1::before { background: var(--good-text); }
+  .comp-legend .lg2::before { background: var(--neutral-dot); }
+  .comp-legend .lg3::before { background: var(--warn-text); }
+
+  .chip-row { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 6px; -webkit-overflow-scrolling: touch; }
+  .chip {
+    flex: 0 0 auto; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    font-size: 11px; padding: 5px 12px; border-radius: 9999px; white-space: nowrap;
+  }
+
+  .net-legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .net-legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 9999px; margin-right: 4px; vertical-align: middle; }
+  .net-legend .lg1::before { background: var(--good-text); }
+  .net-legend .lg2::before { background: var(--neutral-dot); }
+  .net-legend .lg3::before { background: var(--warn-text); }
+
+  .speed-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .speed-row:last-child { border-bottom: none; }
+  .speed-dot { width: 9px; height: 9px; border-radius: 9999px; flex: 0 0 auto; }
+  .speed-dot.g1 { background: var(--good-text); }
+  .speed-dot.g2 { background: var(--neutral-dot); }
+  .speed-dot.g3 { background: var(--warn-text); }
+  .speed-zone { flex: 1; }
+  .speed-route { color: var(--muted); font-size: 11px; }
+  .speed-val { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-inner">
+    <h1>추석 귀성길 안내판</h1>
+    <p class="hero-sub">한국도로공사 실시간 데이터 기준</p>
+    <div class="updated" id="updated"><span class="live-dot"></span>받은 시각 확인 중...</div>
+  </div>
+</div>
+
+<div class="quicknav">
+  <a href="#stats">전국 현황</a>
+  <a href="#eta">예상 소요시간</a>
+  <a href="#route">내 귀성길</a>
+  <a href="#jam">정체 구간</a>
+  <a href="#map">지도·고속도로망</a>
+  <a href="#cctv">CCTV</a>
+</div>
+
+<div class="wrap">
+  <div class="card" id="stats">
+    <h2>전국 현황</h2>
+    <p class="subnote">전국 고속도로 구간의 실시간 속도 기준입니다.</p>
+    <div class="stat-grid" id="nationalStats">
+      <div class="stat-box"><div class="stat-num good" id="statGood">-</div><div class="stat-label">소통원활 비율</div></div>
+      <div class="stat-box"><div class="stat-num warn" id="statJam">-</div><div class="stat-label">정체 구간</div></div>
+      <div class="stat-box"><div class="stat-num" id="statSlow">-</div><div class="stat-label">서행 구간</div></div>
+      <div class="stat-box"><div class="stat-num warn" id="statIncident">-</div><div class="stat-label">진행 중 사고·고장</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="eta">
+    <h2>서울 출발 예상 소요시간</h2>
+    <p class="subnote">지금 이 순간 기준 실시간 값입니다. 미래 특정 시간대(예: 내일 오전 9시)를 미리 예측해서 알려주는 자료는 공공데이터에 없어서, 이 화면을 열어둔 채로 갱신되는 값을 보고 언제 뚫리는지 직접 확인하는 방식입니다.</p>
+    <div id="etaTable" class="placeholder">불러오는 중...</div>
+  </div>
+
+  <div class="card" id="etahistory">
+    <h2>출발 시간별 소요시간 기록</h2>
+    <p class="subnote">미래 예측이 아니라, 이 화면이 열려 있는 동안 60초마다 실제로 받은 값을 시각별로 쌓아 보여줍니다. 이 기기에만 저장되고, 새로고침해도 남아 있습니다.</p>
+    <div id="etaHistoryTable" class="placeholder">데이터가 쌓이면 표시됩니다</div>
+  </div>
+
+  <div class="card" id="route">
+    <h2>내 귀성길</h2>
+    <p class="subnote">출발지·도착지를 고르면 노선이 자동으로 정해집니다. 목록에 없으면 아래에서 노선을 직접 고르세요.</p>
+    <div class="od-row">
+      <select id="originSelect"></select>
+      <button type="button" class="od-swap" id="swapBtn" title="출발지·도착지 바꾸기">⇄</button>
+      <select id="destSelect"></select>
+    </div>
+    <div class="od-row" style="margin-top:8px;">
+      <button type="button" class="od-btn" id="findRouteBtn" style="flex:1;">귀성길 노선 찾기</button>
+    </div>
+    <div id="odResult" class="od-result"></div>
+    <select id="routeSelect"><option value="">또는 목록에서 직접 고르기</option></select>
+
+    <div class="route-headline" id="routeHeadline" style="display:none;">
+      <div class="route-name" id="routeName"></div>
+      <div class="comp-bar" id="compBar"></div>
+      <div class="comp-legend">
+        <span class="lg1">원활 <b id="compGoodN"></b></span>
+        <span class="lg2">서행 <b id="compSlowN"></b></span>
+        <span class="lg3">정체 <b id="compJamN"></b></span>
+      </div>
+      <div class="chip-row" id="segChips"></div>
+    </div>
+
+    <div id="routeStatus" class="placeholder" style="margin-top:8px;">노선을 고르면 표시됩니다</div>
+  </div>
+
+  <div class="card" id="jam">
+    <h2>전국 정체 구간 TOP 10</h2>
+    <p class="subnote">시속이 가장 낮은 구간부터 보여줍니다. 노선을 고르면 그 노선만 다시 보여줍니다.</p>
+    <div id="jamList" class="placeholder">불러오는 중...</div>
+  </div>
+
+  <div class="card" id="map">
+    <h2>실시간 지도 · 고속도로망</h2>
+    <p class="subnote">휴게소의 실제 좌표에 유가를 표시하고, 같은 노선 휴게소를 순서대로 선으로 이었습니다. "내 귀성길"에서 노선을 고르면 그 노선만 굵게 표시되고 지금 상태가 아래에 나옵니다.</p>
+    <div id="mapRouteStatus" class="placeholder" style="margin-bottom:10px;">노선을 고르면 그 노선 상태가 여기 표시됩니다</div>
+    <div id="mapContainer" style="height:360px;"></div>
+    <div class="net-legend" style="margin-top:8px;">
+      <span class="lg1">원활</span>
+      <span class="lg2">서행 섞임</span>
+      <span class="lg3">정체 있음</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>이 노선 최저가 휴게소</h2>
+    <div id="routePrice" class="placeholder">노선을 고르면 표시됩니다</div>
+  </div>
+
+  <div class="card" id="cctv">
+    <h2>실시간 CCTV</h2>
+    <p class="subnote">이 화면 안에서 바로 재생하는 건 아니고, 로드플러스 사이트로 연결됩니다. 열리면 이 노선 이름으로 검색해서 보시면 됩니다.</p>
+    <a class="cctv-btn" href="https://www.roadplus.co.kr/main" target="_blank" rel="noopener">로드플러스에서 CCTV 보기</a>
+  </div>
+</div>
+
+<script>
+// 도시 -> 노선 매핑. 손으로 만든 목록이 아니라, 휴게소 유가 데이터의 실제 주소(svarAddr)에서
+// 시/군 이름을 뽑아 그 시/군을 지나는 노선과 연결한 것이다. loadAndRender에서 매번 새로 만든다.
+var CITY_ROUTE = {};
+
+var METRO_CITIES = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종"];
+
+function parseCity(addr) {
+  if (!addr) return null;
+  var tokens = addr.split(/\s+/);
+  for (var i = 0; i < tokens.length; i++) {
+    var t = tokens[i].replace(/(특별자치시|특별자치도|광역시|특별시)$/, "");
+    if (METRO_CITIES.indexOf(t) !== -1) return t;
+  }
+  for (var j = 0; j < tokens.length; j++) {
+    var m = tokens[j].match(/^([가-힣]+?)(시|군)$/);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// 고속도로 휴게소가 없어서 실시간 데이터만으로는 안 잡히는 지역 몇 곳을 손으로 추가한 목록이다.
+// 정확한 나들목 단위 안내가 아니라 "이 노선 근처까지 고속도로, 그 다음은 국도"라는 대략적인 안내다.
+var NON_EXPRESSWAY_FALLBACK = {
+  "울진": "새만금포항선",
+  "영양": "새만금포항선",
+  "봉화": "새만금포항선",
+  "거제": "남해선",
+  "완도": "호남선",
+  "진도": "호남선",
+  "신안": "호남선"
+};
+
+function findRouteByCity(origin, dest) {
+  var o = (origin || "").trim();
+  var d = (dest || "").trim();
+  if (CITY_ROUTE[d]) return { route: CITY_ROUTE[d], approx: false };
+  if (CITY_ROUTE[o]) return { route: CITY_ROUTE[o], approx: false };
+  if (NON_EXPRESSWAY_FALLBACK[d]) return { route: NON_EXPRESSWAY_FALLBACK[d], approx: true };
+  if (NON_EXPRESSWAY_FALLBACK[o]) return { route: NON_EXPRESSWAY_FALLBACK[o], approx: true };
+  return null;
+}
+
+// 서울 출발 예상 소요시간 API의 두 글자 코드 -> 도시 이름
+// (강릉·양양은 실제 소요시간 값을 보고 추정한 매칭입니다)
+var ETA_CITIES = [
+  { code: "dj", name: "대전" },
+  { code: "dg", name: "대구" },
+  { code: "us", name: "울산" },
+  { code: "bs", name: "부산" },
+  { code: "gj", name: "광주" },
+  { code: "mp", name: "목포" },
+  { code: "kr", name: "강릉" },
+  { code: "yy", name: "양양" }
+];
+
+var GRADE_LABEL = { "1": "원활", "2": "서행", "3": "정체" };
+
+function toNumber(priceText) {
+  if (!priceText || priceText === "X") return null;
+  var n = parseInt(priceText.replace(/[^0-9]/g, ""), 10);
+  return isNaN(n) ? null : n;
+}
+
+var incidentList = [];
+var priceRows = [];
+var speedList = [];
+var locationList = [];
+var restStops = [];
+
+function renderNationalStats() {
+  var withGrade = speedList.filter(function (s) { return s.grade === "1" || s.grade === "2" || s.grade === "3"; });
+  var good = withGrade.filter(function (s) { return s.grade === "1"; }).length;
+  var slow = withGrade.filter(function (s) { return s.grade === "2"; }).length;
+  var jam = withGrade.filter(function (s) { return s.grade === "3"; }).length;
+  var pct = withGrade.length ? Math.round((good / withGrade.length) * 100) : 0;
+
+  document.getElementById("statGood").textContent = pct + "%";
+  document.getElementById("statGood").className = "stat-num good";
+  document.getElementById("statJam").textContent = jam;
+  document.getElementById("statSlow").textContent = slow;
+
+  var incidentCount = incidentList.filter(function (i) { return i.accType !== "이벤트/홍보"; }).length;
+  document.getElementById("statIncident").textContent = incidentCount;
+}
+
+var ETA_HISTORY = [];
+try {
+  var savedHistory = localStorage.getItem("etaHistory");
+  if (savedHistory) ETA_HISTORY = JSON.parse(savedHistory);
+} catch (e) { ETA_HISTORY = []; }
+
+function renderEtaHistoryTable() {
+  var el = document.getElementById("etaHistoryTable");
+  if (ETA_HISTORY.length === 0) {
+    el.innerHTML = "<span class=\"placeholder\">데이터가 쌓이면 표시됩니다</span>";
+    return;
+  }
+  var head = "<tr><th>출발 시각</th>" + ETA_CITIES.map(function (c) { return "<th>" + c.name + "</th>"; }).join("") + "</tr>";
+  var rows = ETA_HISTORY.slice().reverse().map(function (entry) {
+    return "<tr><td>" + entry.time + "</td>" +
+      ETA_CITIES.map(function (c) { return "<td>" + (entry[c.code] || "-") + "</td>"; }).join("") +
+      "</tr>";
+  }).join("");
+  el.innerHTML = "<div style=\"overflow-x:auto;\"><table><thead>" + head + "</thead><tbody>" + rows + "</tbody></table></div>";
+}
+
+function renderEtaTable() {
+  fetch("/api/eta")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var row = (data.list || [])[0];
+      var el = document.getElementById("etaTable");
+      if (!row) { el.innerHTML = "<span class=\"error\">불러오기 실패</span>"; return; }
+      var rows = ETA_CITIES.map(function (c) {
+        var key = "csu" + c.code;
+        return "<tr><td>서울 → " + c.name + "</td><td class=\"price\">" + (row[key] || "-") + "</td></tr>";
+      }).join("");
+      el.innerHTML = "<table><thead><tr><th>구간</th><th>예상 소요시간</th></tr></thead><tbody>" + rows + "</tbody></table>";
+
+      var entry = { time: nowLabel() };
+      ETA_CITIES.forEach(function (c) { entry[c.code] = row["csu" + c.code] || "-"; });
+      ETA_HISTORY.push(entry);
+      if (ETA_HISTORY.length > 30) ETA_HISTORY = ETA_HISTORY.slice(-30);
+      try { localStorage.setItem("etaHistory", JSON.stringify(ETA_HISTORY)); } catch (e) {}
+      renderEtaHistoryTable();
+    })
+    .catch(function () {
+      document.getElementById("etaTable").innerHTML = "<span class=\"error\">불러오기 실패</span>";
+    });
+}
+
+function renderJamList(routeFilter) {
+  var list = routeFilter
+    ? speedList.filter(function (s) { return s.routeName === routeFilter; })
+    : speedList;
+  var top = list.filter(function (s) { return s.grade === "3"; })
+    .sort(function (a, b) { return a.speed - b.speed; })
+    .slice(0, 10);
+
+  var el = document.getElementById("jamList");
+  if (top.length === 0) {
+    el.innerHTML = "<span class=\"placeholder\">" + (routeFilter ? "이 노선은 정체 구간이 없습니다" : "전국에 정체 구간이 없습니다") + "</span>";
+    return;
+  }
+  el.innerHTML = top.map(function (s) {
+    return "<div class=\"speed-row\"><span class=\"speed-dot g" + s.grade + "\"></span>" +
+      "<span class=\"speed-zone\">" + s.conzoneName + " <span class=\"speed-route\">(" + s.routeName + ")</span></span>" +
+      "<span class=\"speed-val\">" + s.speed + "km/h</span></div>";
+  }).join("");
+}
+
+var map = null;
+var mapLayer = null;
+
+function ensureMap() {
+  if (map || typeof L === "undefined") return;
+  map = L.map("mapContainer").setView([36.3, 127.8], 7);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+    maxZoom: 18
+  }).addTo(map);
+  mapLayer = L.layerGroup().addTo(map);
+}
+
+function priceColor(price, min, max) {
+  if (max === min) return "#707072";
+  var t = (price - min) / (max - min);
+  if (t < 0.33) return "#007d48";
+  if (t < 0.66) return "#4b4b4d";
+  return "#d30005";
+}
+
+function routeLineColor(route) {
+  var segs = speedList.filter(function (s) { return s.routeName === route; });
+  if (segs.some(function (s) { return s.grade === "3"; })) return "#d30005";
+  if (segs.some(function (s) { return s.grade === "2"; })) return "#4b4b4d";
+  return "#007d48";
+}
+
+function routeStatusLabel(route) {
+  var segs = speedList.filter(function (s) { return s.routeName === route; });
+  if (segs.length === 0) return null;
+  var jam = segs.filter(function (s) { return s.grade === "3"; }).length;
+  var slow = segs.filter(function (s) { return s.grade === "2"; }).length;
+  if (jam > 0) return { text: "정체 있음", cls: "status-warn", detail: "정체 " + jam + "곳 · 서행 " + slow + "곳 (전체 " + segs.length + "곳)" };
+  if (slow > 0) return { text: "서행 섞임", cls: "status-good", detail: "서행 " + slow + "곳 (전체 " + segs.length + "곳)" };
+  return { text: "원활", cls: "status-good", detail: "전체 " + segs.length + "곳 모두 원활" };
+}
+
+function renderMap() {
+  ensureMap();
+  if (!map) return;
+  mapLayer.clearLayers();
+
+  var byRoute = {};
+  restStops.forEach(function (s) {
+    if (!byRoute[s.route]) byRoute[s.route] = [];
+    byRoute[s.route].push(s);
+  });
+
+  var prices = restStops.map(function (s) { return s.gasoline; }).filter(function (p) { return p != null; });
+  var minP = prices.length ? Math.min.apply(null, prices) : 0;
+  var maxP = prices.length ? Math.max.apply(null, prices) : 0;
+
+  var selectedBounds = [];
+
+  Object.keys(byRoute).forEach(function (route) {
+    var pts = byRoute[route];
+    var isSelected = currentRoute && route === currentRoute;
+    var dimmed = currentRoute && !isSelected;
+
+    if (pts.length > 1) {
+      var latlngs = pts.map(function (p) { return [p.lat, p.lng]; });
+      L.polyline(latlngs, {
+        color: dimmed ? "#cacacb" : routeLineColor(route),
+        weight: isSelected ? 5 : 2,
+        opacity: dimmed ? 0.4 : 0.85
+      }).addTo(mapLayer);
+      if (isSelected) selectedBounds = selectedBounds.concat(latlngs);
+    }
+    pts.forEach(function (p) {
+      var color = dimmed ? "#cacacb" : (p.gasoline == null ? "#9e9ea0" : priceColor(p.gasoline, minP, maxP));
+      L.circleMarker([p.lat, p.lng], {
+        radius: isSelected ? 7 : 5, color: "#fff", weight: 1,
+        fillColor: color, fillOpacity: dimmed ? 0.5 : 0.9
+      })
+        .bindPopup(p.name + "<br>" + p.route + "<br>" + (p.gasolineText || "유가 정보 없음"))
+        .addTo(mapLayer);
+    });
+  });
+
+  var statusEl = document.getElementById("mapRouteStatus");
+  if (!currentRoute) {
+    statusEl.className = "placeholder";
+    statusEl.innerHTML = "노선을 고르면 그 노선 상태가 여기 표시됩니다";
+  } else {
+    var status = routeStatusLabel(currentRoute);
+    if (!status) {
+      statusEl.className = "placeholder";
+      statusEl.innerHTML = currentRoute + ": 실시간 속도 데이터가 없습니다";
+    } else {
+      statusEl.className = "status-banner " + status.cls;
+      statusEl.innerHTML = currentRoute + " 지금 상태: " + status.text +
+        "<div class=\"status-detail\">" + status.detail + "</div>";
+      if (selectedBounds.length > 1) map.fitBounds(selectedBounds, { padding: [24, 24] });
+    }
+  }
+}
+
+function renderRouteHeadline(route) {
+  var segs = speedList.filter(function (s) { return s.routeName === route; });
+  var headlineEl = document.getElementById("routeHeadline");
+  if (segs.length === 0) {
+    headlineEl.style.display = "none";
+    return;
+  }
+  headlineEl.style.display = "block";
+  document.getElementById("routeName").textContent = route;
+
+  var good = segs.filter(function (s) { return s.grade === "1"; }).length;
+  var slow = segs.filter(function (s) { return s.grade === "2"; }).length;
+  var jam = segs.filter(function (s) { return s.grade === "3"; }).length;
+  var total = good + slow + jam || 1;
+
+  var bar = document.getElementById("compBar");
+  bar.innerHTML =
+    "<div class=\"comp-seg g1\" style=\"width:" + (good / total * 100) + "%\"></div>" +
+    "<div class=\"comp-seg g2\" style=\"width:" + (slow / total * 100) + "%\"></div>" +
+    "<div class=\"comp-seg g3\" style=\"width:" + (jam / total * 100) + "%\"></div>";
+  document.getElementById("compGoodN").textContent = good + "곳";
+  document.getElementById("compSlowN").textContent = slow + "곳";
+  document.getElementById("compJamN").textContent = jam + "곳";
+
+  var chips = document.getElementById("segChips");
+  chips.innerHTML = segs.slice(0, 25).map(function (s) {
+    return "<span class=\"chip\">" + s.conzoneName + "</span>";
+  }).join("");
+}
+
+function renderRoute(route) {
+  if (!route) {
+    document.getElementById("routeStatus").innerHTML = "<span class=\"placeholder\">노선을 고르면 표시됩니다</span>";
+    document.getElementById("routePrice").innerHTML = "<span class=\"placeholder\">노선을 고르면 표시됩니다</span>";
+    document.getElementById("routeHeadline").style.display = "none";
+    renderJamList(null);
+    renderMap();
+    return;
+  }
+
+  renderRouteHeadline(route);
+
+  // 돌발상황 + 우회 추천
+  var matched = incidentList.filter(function (item) {
+    return (item.roadNM || "").indexOf(route) !== -1;
+  });
+  var meaningful = matched.filter(function (item) { return item.accType !== "이벤트/홍보"; });
+  var statusEl = document.getElementById("routeStatus");
+  if (meaningful.length === 0) {
+    statusEl.innerHTML =
+      "<div class=\"status-banner status-good\">고속도로 그대로 이동해도 됩니다" +
+      "<div class=\"status-detail\">이 노선에서 확인된 정체·사고성 돌발상황: 0건</div></div>";
+  } else {
+    var types = {};
+    meaningful.forEach(function (item) { types[item.accType] = (types[item.accType] || 0) + 1; });
+    var typeText = Object.keys(types).map(function (t) { return t + " " + types[t] + "건"; }).join(", ");
+    statusEl.innerHTML =
+      "<div class=\"status-banner status-warn\">정체·돌발상황이 있어 국도 확인을 권장합니다" +
+      "<div class=\"status-detail\">" + typeText + "</div></div>";
+  }
+
+  // 최저가 휴게소
+  var routePrices = priceRows.filter(function (row) { return row.route === route; }).slice(0, 5);
+  var priceEl = document.getElementById("routePrice");
+  if (routePrices.length === 0) {
+    priceEl.innerHTML = "<span class=\"placeholder\">이 노선의 유가 정보가 없습니다</span>";
+  } else {
+    var rows = routePrices.map(function (row) {
+      return "<tr><td>" + row.name + "</td><td>" + row.direction + "</td><td class=\"price\">" + row.gasolineText + "</td><td>" + row.diesel + "</td></tr>";
+    }).join("");
+    priceEl.innerHTML =
+      "<table><thead><tr><th>휴게소</th><th>방향</th><th>휘발유</th><th>경유</th></tr></thead><tbody>" + rows + "</tbody></table>";
+  }
+
+  renderJamList(route);
+  renderMap();
+}
+
+var currentRoute = "";
+var routeList = [];
+
+function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+function nowLabel() {
+  var d = new Date();
+  return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
+}
+
+function populateRouteOptions(routes) {
+  var select = document.getElementById("routeSelect");
+  var prev = select.value;
+  select.innerHTML = "<option value=\"\">또는 목록에서 직접 고르기</option>";
+  routes.forEach(function (route) {
+    var opt = document.createElement("option");
+    opt.value = route;
+    opt.textContent = route;
+    select.appendChild(opt);
+  });
+  select.value = routes.indexOf(prev) !== -1 ? prev : "";
+}
+
+function loadAndRender() {
+  Promise.all([
+    fetch("/api/burst").then(function (r) { return r.json(); }),
+    fetch("/api/price").then(function (r) { return r.json(); }),
+    fetch("/api/speed").then(function (r) { return r.json(); }),
+    fetch("/api/location").then(function (r) { return r.json(); })
+  ]).then(function (results) {
+    incidentList = results[0].realTimeSMSList || [];
+    speedList = results[2].list || [];
+    locationList = results[3].list || [];
+    priceRows = (results[1].list || [])
+      .map(function (item) {
+        return {
+          name: item.serviceAreaName,
+          route: item.routeName,
+          direction: item.direction,
+          serviceAreaCode: (item.serviceAreaCode || "").replace(/^[A-Za-z]/, ""),
+          addr: item.svarAddr,
+          gasoline: toNumber(item.gasolinePrice),
+          gasolineText: item.gasolinePrice,
+          diesel: item.diselPrice
+        };
+      })
+      .filter(function (item) { return item.gasoline !== null; })
+      .sort(function (a, b) { return a.gasoline - b.gasoline; });
+
+    routeList = [];
+    priceRows.forEach(function (row) {
+      if (row.route && routeList.indexOf(row.route) === -1) routeList.push(row.route);
+    });
+    populateRouteOptions(routeList);
+
+    CITY_ROUTE = {};
+    priceRows.forEach(function (row) {
+      var city = parseCity(row.addr);
+      if (city && !CITY_ROUTE[city]) CITY_ROUTE[city] = row.route;
+    });
+    var cityOptions = Object.keys(CITY_ROUTE).sort().map(function (c) { return { name: c, approx: false }; });
+    Object.keys(NON_EXPRESSWAY_FALLBACK).forEach(function (c) {
+      if (!CITY_ROUTE[c]) cityOptions.push({ name: c, approx: true });
+    });
+    populateCitySelects(cityOptions);
+
+    var locByCode = {};
+    locationList.forEach(function (l) { locByCode[l.serviceAreaCode] = l; });
+    restStops = priceRows.map(function (p) {
+      var loc = locByCode[p.serviceAreaCode];
+      if (!loc) return null;
+      return { name: p.name, route: p.route, lat: loc.lat, lng: loc.lng, gasoline: p.gasoline, gasolineText: p.gasolineText };
+    }).filter(function (x) { return x; });
+
+    renderNationalStats();
+    renderRoute(currentRoute);
+    document.getElementById("updated").innerHTML = "<span class=\"live-dot\"></span>실시간 · " + nowLabel() + " 기준 (60초마다 갱신)";
+  }).catch(function () {
+    document.getElementById("routeStatus").innerHTML = "<span class=\"error\">데이터를 불러오지 못했습니다</span>";
+    document.getElementById("jamList").innerHTML = "<span class=\"error\">데이터를 불러오지 못했습니다</span>";
+    document.getElementById("updated").innerHTML = "<span class=\"live-dot\"></span>실시간 데이터를 불러오지 못했습니다";
+  });
+  renderEtaTable();
+}
+
+var originSelect = document.getElementById("originSelect");
+var destSelect = document.getElementById("destSelect");
+var citySelectsFilled = false;
+
+function populateCitySelects(cityOptions) {
+  var names = cityOptions.map(function (c) { return c.name; });
+  var prevOrigin = originSelect.value;
+  var prevDest = destSelect.value;
+  originSelect.innerHTML = "";
+  destSelect.innerHTML = "";
+  cityOptions.forEach(function (c) {
+    var label = c.approx ? c.name + " (국도 구간 있음)" : c.name;
+    var o1 = document.createElement("option"); o1.value = c.name; o1.textContent = label;
+    originSelect.appendChild(o1);
+    var o2 = document.createElement("option"); o2.value = c.name; o2.textContent = label;
+    destSelect.appendChild(o2);
+  });
+  if (!citySelectsFilled) {
+    originSelect.value = names.indexOf("서울") !== -1 ? "서울" : names[0];
+    destSelect.value = names.indexOf("부산") !== -1 ? "부산" : names[Math.min(1, names.length - 1)];
+    citySelectsFilled = true;
+  } else {
+    if (names.indexOf(prevOrigin) !== -1) originSelect.value = prevOrigin;
+    if (names.indexOf(prevDest) !== -1) destSelect.value = prevDest;
+  }
+}
+
+document.getElementById("routeSelect").addEventListener("change", function (e) {
+  currentRoute = e.target.value;
+  renderRoute(currentRoute);
+});
+
+document.getElementById("swapBtn").addEventListener("click", function () {
+  var tmp = originSelect.value;
+  originSelect.value = destSelect.value;
+  destSelect.value = tmp;
+});
+
+document.getElementById("findRouteBtn").addEventListener("click", function () {
+  var origin = originSelect.value;
+  var dest = destSelect.value;
+  var matched = findRouteByCity(origin, dest);
+  var resultEl = document.getElementById("odResult");
+  if (matched && routeList.indexOf(matched.route) !== -1) {
+    resultEl.className = "od-result found";
+    resultEl.textContent = matched.approx
+      ? origin + " → " + dest + ": " + matched.route + "으로 가다가 마지막은 국도 구간입니다 (근사 안내)"
+      : origin + " → " + dest + " 자동으로 고른 노선: " + matched.route;
+    currentRoute = matched.route;
+    document.getElementById("routeSelect").value = matched.route;
+    renderRoute(matched.route);
+  } else {
+    resultEl.className = "od-result notfound";
+    resultEl.textContent = "이 조합은 표에 없습니다. 아래 목록에서 직접 골라 주세요.";
+  }
+});
+
+renderEtaHistoryTable();
+loadAndRender();
+setInterval(loadAndRender, 60000);
+</script>
+</body>
+</html>
